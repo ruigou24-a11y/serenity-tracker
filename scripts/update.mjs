@@ -3,6 +3,24 @@ import crypto from "node:crypto";
 
 const SOURCE_URL = "https://instalker.org/aleabitoreddit";
 const DATA_PATH = new URL("../data.json", import.meta.url);
+const QUOTE_SYMBOLS = {
+  AAOI: "AAOI",
+  AXTI: "AXTI",
+  LITE: "LITE",
+  NBIS: "NBIS",
+  NVDA: "NVDA",
+  MRVL: "MRVL",
+  AMZN: "AMZN",
+  AMD: "AMD",
+  NOK: "NOK",
+  NVTS: "NVTS",
+  POWI: "POWI",
+  WOLF: "WOLF",
+  IQE: "IQE.L",
+  SOI: "SOI.PA",
+  XFAB: "XFAB.PA",
+  SIVE: "SIVE.ST"
+};
 
 function decodeHtml(value) {
   return value
@@ -45,10 +63,43 @@ function extractPosts(html) {
   return posts;
 }
 
+function extractPostRecords(html) {
+  const matches = [...html.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi)];
+  const seen = new Set();
+  const posts = [];
+  for (const match of matches) {
+    const text = cleanText(match[1]);
+    if (text.length < 25) continue;
+    if (text.includes("View a Private Twitter Instagram Account")) continue;
+    if (text.includes("全网都在聊的 Serenity")) continue;
+    if (seen.has(text)) continue;
+    seen.add(text);
+
+    const before = html.slice(Math.max(0, match.index - 2200), match.index);
+    const statusMatches = [...before.matchAll(/href=["']([^"']*\/aleabitoreddit\/status\/(\d+)[^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi)];
+    const lastStatus = statusMatches.at(-1);
+    const relativeUrl = lastStatus?.[1]?.replace(/&amp;/g, "&");
+    const statusId = lastStatus?.[2] || "";
+    const timeLabel = lastStatus ? cleanText(lastStatus[3]) : "";
+    const url = statusId ? `https://x.com/aleabitoreddit/status/${statusId}` : SOURCE_URL;
+
+    posts.push({
+      id: statusId || crypto.createHash("sha1").update(text).digest("hex").slice(0, 12),
+      url,
+      mirrorUrl: relativeUrl ? new URL(relativeUrl, SOURCE_URL).href : SOURCE_URL,
+      timeLabel,
+      text
+    });
+    if (posts.length >= 30) break;
+  }
+  return posts;
+}
+
 function countTickers(posts) {
   const counts = new Map();
   for (const post of posts) {
-    const tickers = new Set(post.match(/\$[A-Z][A-Z0-9.]{0,5}\b/g) || []);
+    const text = typeof post === "string" ? post : post.text;
+    const tickers = new Set(text.match(/\$[A-Z][A-Z0-9.]{0,5}\b/g) || []);
     for (const ticker of tickers) {
       const key = ticker.slice(1);
       counts.set(key, (counts.get(key) || 0) + 1);
@@ -58,7 +109,7 @@ function countTickers(posts) {
 }
 
 function scoreThemes(posts) {
-  const corpus = posts.join("\n").toLowerCase();
+  const corpus = posts.map((post) => typeof post === "string" ? post : post.text).join("\n").toLowerCase();
   const themes = [
     ["CPO / 光通信", ["cpo", "photonics", "optics", "optical", "transceiver", "silicon photonics"]],
     ["激光器 / InP 材料瓶颈", ["laser", "inp", "substrate", "epiwafer", "bottleneck"]],
@@ -115,7 +166,61 @@ function compactPost(post) {
 }
 
 function hashPosts(posts) {
-  return crypto.createHash("sha256").update(posts.join("\n---\n")).digest("hex");
+  return crypto.createHash("sha256").update(posts.map((post) => typeof post === "string" ? post : post.text).join("\n---\n")).digest("hex");
+}
+
+async function fetchQuote(ticker) {
+  const yahooSymbol = QUOTE_SYMBOLS[ticker];
+  if (!yahooSymbol) return null;
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?range=1d&interval=1m`;
+  const response = await fetch(url, {
+    headers: { "user-agent": "Mozilla/5.0 serenity-tracker" }
+  });
+  if (!response.ok) throw new Error(`Quote fetch failed for ${ticker}: ${response.status}`);
+  const payload = await response.json();
+  const result = payload.chart?.result?.[0];
+  const meta = result?.meta;
+  const quote = result?.indicators?.quote?.[0];
+  if (!meta) return null;
+
+  const closes = quote?.close || [];
+  const lastClose = [...closes].reverse().find((value) => typeof value === "number");
+  const price = meta.regularMarketPrice ?? lastClose;
+  if (typeof price !== "number") return null;
+  const previous = meta.chartPreviousClose ?? meta.previousClose;
+  const change = typeof previous === "number" ? price - previous : null;
+  const changePercent = typeof previous === "number" && previous !== 0 ? (change / previous) * 100 : null;
+
+  return {
+    ticker,
+    yahooSymbol,
+    exchangeName: meta.exchangeName || "",
+    currency: meta.currency || "",
+    price,
+    previousClose: previous ?? null,
+    change,
+    changePercent,
+    quoteTime: meta.regularMarketTime
+      ? new Date(meta.regularMarketTime * 1000).toISOString()
+      : new Date().toISOString()
+  };
+}
+
+async function fetchQuotes(tickers, previousQuotes = []) {
+  const needed = [...new Set(tickers.map(([ticker]) => ticker).filter((ticker) => QUOTE_SYMBOLS[ticker]))].slice(0, 14);
+  const previousByTicker = new Map(previousQuotes.map((quote) => [quote.ticker, quote]));
+  const quotes = [];
+  for (const ticker of needed) {
+    try {
+      const quote = await fetchQuote(ticker);
+      if (quote) quotes.push(quote);
+    } catch (error) {
+      if (previousByTicker.has(ticker)) {
+        quotes.push({ ...previousByTicker.get(ticker), stale: true, error: error.message });
+      }
+    }
+  }
+  return quotes;
 }
 
 async function main() {
@@ -135,18 +240,25 @@ async function main() {
   }
 
   const html = await response.text();
-  const posts = extractPosts(html);
+  const posts = extractPostRecords(html);
   if (posts.length < 5) {
     throw new Error(`Only extracted ${posts.length} posts`);
   }
 
   const sourceHash = hashPosts(posts);
-  if (previous.sourceHash === sourceHash) {
-    console.log("No new visible posts. Keeping data.json unchanged.");
+  const tickers = countTickers(posts);
+  const quotes = await fetchQuotes(tickers, previous.quotes || []);
+  const quoteHash = crypto.createHash("sha256").update(JSON.stringify(quotes.map((quote) => [
+    quote.ticker,
+    quote.price,
+    quote.changePercent,
+    quote.quoteTime
+  ]))).digest("hex");
+  if (previous.sourceHash === sourceHash && previous.quoteHash === quoteHash) {
+    console.log("No new visible posts or quote changes. Keeping data.json unchanged.");
     return;
   }
 
-  const tickers = countTickers(posts);
   const themes = scoreThemes(posts);
   const summary = summarize(posts, tickers, themes);
   const data = {
@@ -154,10 +266,15 @@ async function main() {
     sourceUrl: SOURCE_URL,
     postCount: posts.length,
     sourceHash,
+    quoteHash,
     ...summary,
     tickers,
+    quotes,
     themes,
-    posts: posts.slice(0, 30).map(compactPost)
+    posts: posts.slice(0, 30).map((post) => ({
+      ...post,
+      summary: compactPost(post.text)
+    }))
   };
 
   await fs.writeFile(DATA_PATH, `${JSON.stringify(data, null, 2)}\n`);

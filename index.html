@@ -65,7 +65,21 @@
 
       <section class="panel">
         <div class="panel-head">
-          <h2>最近发帖摘要</h2>
+          <div>
+            <h2>股票实时行情</h2>
+            <p id="quoteNote" class="panel-note">报价可能有延迟，请以券商行情为准。</p>
+          </div>
+          <span class="badge neutral">自动抓取</span>
+        </div>
+        <div id="quotes" class="quote-grid"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>最近发帖原文归档</h2>
+            <p class="panel-note">点击任意卡片展开原文，也可以打开 X 原帖或镜像来源。</p>
+          </div>
           <span class="badge neutral">最多 30 条</span>
         </div>
         <div id="posts" class="post-list"></div>
@@ -94,6 +108,10 @@
           ["SIVE", 8], ["NVDA", 5], ["AXTI", 5], ["AAOI", 5], ["XFAB", 4], ["LITE", 4],
           ["NOK", 3], ["SOI", 3], ["MRVL", 2], ["AMZN", 2], ["AMD", 2], ["NVTS", 2], ["POWI", 2]
         ],
+        quotes: [
+          { ticker: "AAOI", yahooSymbol: "AAOI", currency: "USD", price: 177.62, changePercent: 0, quoteTime: "2026-05-28T00:00:00.000Z" },
+          { ticker: "LITE", yahooSymbol: "LITE", currency: "USD", price: 898.49, changePercent: 0, quoteTime: "2026-05-28T00:00:00.000Z" }
+        ],
         themes: [
           { name: "CPO / 光通信", score: 95 },
           { name: "激光器 / InP 材料瓶颈", score: 82 },
@@ -102,16 +120,46 @@
           { name: "CHIPS Act 政策催化", score: 48 }
         ],
         posts: [
-          "XFAB：称其为 photonics + power semis 的 long idea，自己已建仓，催化包括 EU Chips Act 与 NVDA/NOK 评估。",
-          "SIVE：认为是 CPO 里最有吸引力的当前敞口，提到 Celestial/Marvell、Ayar、JBL 等供应链线索。",
-          "MRVL：把 Marvell 财报视为更广泛 CPO 主题的看多信号，并关联 SIVE 激光供应。",
-          "AAOI / AXTI / LITE：回顾此前光通信和 InP 瓶颈判断，认为类似主题仍在延续。",
-          "NBIS：继续正面评价 Nebius，称此前做多后已大幅上涨，但不是当前最核心新主题。"
+          {
+            timeLabel: "sample",
+            url: "https://x.com/aleabitoreddit",
+            mirrorUrl: "https://instalker.org/aleabitoreddit",
+            summary: "XFAB：称其为 photonics + power semis 的 long idea，自己已建仓，催化包括 EU Chips Act 与 NVDA/NOK 评估。",
+            text: "XFAB：称其为 photonics + power semis 的 long idea，自己已建仓，催化包括 EU Chips Act 与 NVDA/NOK 评估。"
+          }
         ]
       };
 
       function escapeHtml(value) {
         return String(value).replace(/[&<>"']/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]));
+      }
+
+      function formatNumber(value, digits = 2) {
+        if (value === null || value === undefined || value === "") return "--";
+        return Number.isFinite(Number(value)) ? Number(value).toLocaleString("en-US", { maximumFractionDigits: digits, minimumFractionDigits: digits }) : "--";
+      }
+
+      function formatPercent(value) {
+        if (!Number.isFinite(Number(value))) return "--";
+        const sign = Number(value) > 0 ? "+" : "";
+        return `${sign}${Number(value).toFixed(2)}%`;
+      }
+
+      function formatDateTime(value) {
+        if (!value) return "--";
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return value;
+        return date.toLocaleString("zh-CN", { hour12: false });
+      }
+
+      function postSummary(post) {
+        if (typeof post === "string") return post;
+        return post.summary || post.text || "";
+      }
+
+      function postText(post) {
+        if (typeof post === "string") return post;
+        return post.text || post.summary || "";
       }
 
       function render(data) {
@@ -134,9 +182,50 @@
           .map((theme) => `<div class="theme"><span>${escapeHtml(theme.name)}</span><meter min="0" max="100" value="${Number(theme.score) || 0}"></meter></div>`)
           .join("");
 
+        const quotes = data.quotes || [];
+        const latestQuoteTime = quotes.map((quote) => quote.quoteTime).filter(Boolean).sort().at(-1);
+        document.getElementById("quoteNote").textContent = latestQuoteTime
+          ? `最近报价时间：${formatDateTime(latestQuoteTime)}。报价可能有延迟，请以券商行情为准。`
+          : "暂未获取到行情。报价可能有延迟，请以券商行情为准。";
+
+        document.getElementById("quotes").innerHTML = quotes.length
+          ? quotes.map((quote) => {
+              const positive = Number(quote.changePercent) >= 0;
+              const tone = positive ? "up" : "down";
+              const stale = quote.stale ? `<span class="stale">上次报价</span>` : "";
+              return `<article class="quote-card">
+                <div class="quote-title">
+                  <b>${escapeHtml(quote.ticker)}</b>
+                  <span>${escapeHtml(quote.yahooSymbol || quote.ticker)}</span>
+                </div>
+                <strong>${escapeHtml(quote.currency || "")} ${formatNumber(quote.price)}</strong>
+                <p class="${tone}">${formatNumber(quote.change)} / ${formatPercent(quote.changePercent)} ${stale}</p>
+              </article>`;
+            }).join("")
+          : `<p class="empty">暂无可显示行情。</p>`;
+
         document.getElementById("posts").innerHTML = (data.posts || [])
           .slice(0, 30)
-          .map((post, index) => `<article class="post"><span>${index + 1}</span><p>${escapeHtml(post)}</p></article>`)
+          .map((post, index) => {
+            const sourceUrl = typeof post === "string" ? data.sourceUrl : (post.url || data.sourceUrl);
+            const mirrorUrl = typeof post === "string" ? data.sourceUrl : (post.mirrorUrl || data.sourceUrl);
+            return `<details class="post">
+              <summary>
+                <span>${index + 1}</span>
+                <div>
+                  <small>${escapeHtml(post.timeLabel || "")}</small>
+                  <p>${escapeHtml(postSummary(post))}</p>
+                </div>
+              </summary>
+              <div class="post-body">
+                <p>${escapeHtml(postText(post)).replace(/\n/g, "<br>")}</p>
+                <div class="post-actions">
+                  <a href="${escapeHtml(sourceUrl)}" target="_blank" rel="noreferrer">打开 X 原帖</a>
+                  <a href="${escapeHtml(mirrorUrl)}" target="_blank" rel="noreferrer">打开镜像来源</a>
+                </div>
+              </div>
+            </details>`;
+          })
           .join("");
       }
 

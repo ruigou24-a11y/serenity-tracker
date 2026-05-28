@@ -125,6 +125,12 @@ h2 {
   gap: 12px;
   margin-bottom: 16px;
 }
+.panel-note {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
 
 .badge {
   padding: 5px 9px;
@@ -225,22 +231,79 @@ meter {
   height: 12px;
 }
 
+.quote-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.quote-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  background: #fbfcfd;
+}
+.quote-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: baseline;
+  margin-bottom: 12px;
+}
+.quote-title b {
+  font-size: 18px;
+}
+.quote-title span {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.quote-card strong {
+  display: block;
+  font-size: 22px;
+  line-height: 1.2;
+  margin-bottom: 8px;
+}
+.quote-card p {
+  margin-bottom: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+.quote-card .up { color: var(--green); }
+.quote-card .down { color: var(--red); }
+.stale {
+  display: inline-block;
+  margin-left: 6px;
+  color: var(--amber);
+  font-size: 12px;
+}
+.empty {
+  margin: 0;
+  color: var(--muted);
+}
+
 .post-list {
   display: grid;
   gap: 10px;
 }
 .post {
-  display: grid;
-  grid-template-columns: 32px minmax(0, 1fr);
-  gap: 12px;
-  padding: 12px 0;
+  padding: 0;
   border-top: 1px solid var(--line);
 }
 .post:first-child {
   border-top: 0;
-  padding-top: 0;
 }
-.post span {
+.post summary {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px 0;
+  cursor: pointer;
+  list-style: none;
+}
+.post summary::-webkit-details-marker {
+  display: none;
+}
+.post summary span {
   width: 28px;
   height: 28px;
   display: grid;
@@ -251,10 +314,46 @@ meter {
   font-weight: 800;
   font-size: 13px;
 }
-.post p {
+.post small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+.post summary p {
   margin-bottom: 0;
   color: #35404c;
   line-height: 1.7;
+}
+.post-body {
+  margin: 0 0 14px 44px;
+  padding: 14px;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid var(--line);
+}
+.post-body p {
+  margin-bottom: 12px;
+  color: #26313d;
+  line-height: 1.75;
+}
+.post-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.post-actions a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 11px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  color: var(--blue);
+  background: #ffffff;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 footer {
@@ -274,7 +373,11 @@ footer {
   }
   .status-grid,
   .recommendations,
-  .theme-grid {
+  .theme-grid,
+  .quote-grid {
     grid-template-columns: 1fr;
+  }
+  .post-body {
+    margin-left: 0;
   }
 }
