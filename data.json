@@ -1,0 +1,58 @@
+{
+  "updatedAt": "2026-05-28",
+  "sourceUrl": "https://instalker.org/aleabitoreddit",
+  "postCount": 24,
+  "coreTheme": "CPO / 光通信 / AI半导体供应链",
+  "takeaway": "近期内容集中在 CPO、硅光、激光器、InP 材料、功率半导体和 AI 数据中心供应链。他最强的表达集中在 SIVE 与 XFAB，AAOI、AXTI、LITE、SOI 更多作为已验证或同主题受益标的出现。",
+  "recommendations": [
+    {
+      "ticker": "SIVE",
+      "stance": "最强关注",
+      "note": "多次称为当前最有吸引力的 CPO 敞口，提到高信心与加仓，但波动最大。"
+    },
+    {
+      "ticker": "XFAB",
+      "stance": "强关注",
+      "note": "明确说有持仓，逻辑是 photonics + power semis + EU Chips Act。"
+    },
+    {
+      "ticker": "AAOI / AXTI",
+      "stance": "已验证案例",
+      "note": "反复作为此前成功判断和瓶颈逻辑案例出现，追高风险较高。"
+    },
+    {
+      "ticker": "LITE / SOI",
+      "stance": "主题受益",
+      "note": "更成熟的光通信与材料链敞口，适合与小盘投机股区分看待。"
+    }
+  ],
+  "tickers": [
+    ["SIVE", 8],
+    ["NVDA", 5],
+    ["AXTI", 5],
+    ["AAOI", 5],
+    ["XFAB", 4],
+    ["LITE", 4],
+    ["NOK", 3],
+    ["SOI", 3],
+    ["MRVL", 2],
+    ["AMZN", 2],
+    ["AMD", 2],
+    ["NVTS", 2],
+    ["POWI", 2]
+  ],
+  "themes": [
+    { "name": "CPO / 光通信", "score": 95 },
+    { "name": "激光器 / InP 材料瓶颈", "score": 82 },
+    { "name": "AI 数据中心供应链", "score": 78 },
+    { "name": "功率半导体 / 800V DC", "score": 55 },
+    { "name": "CHIPS Act 政策催化", "score": 48 }
+  ],
+  "posts": [
+    "XFAB：称其为 photonics + power semis 的 long idea，自己已建仓，催化包括 EU Chips Act 与 NVDA/NOK 评估。",
+    "SIVE：认为是 CPO 里最有吸引力的当前敞口，提到 Celestial/Marvell、Ayar、JBL 等供应链线索。",
+    "MRVL：把 Marvell 财报视为更广泛 CPO 主题的看多信号，并关联 SIVE 激光供应。",
+    "AAOI / AXTI / LITE：回顾此前光通信和 InP 瓶颈判断，认为类似主题仍在延续。",
+    "NBIS：继续正面评价 Nebius，称此前做多后已大幅上涨，但不是当前最核心新主题。"
+  ]
+}
