@@ -2,7 +2,7 @@ name: Update Serenity Tracker
 
 on:
   schedule:
-    - cron: "20 2 * * *"
+    - cron: "*/30 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -26,5 +26,5 @@ jobs:
       - name: Commit updated data
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "Update Serenity tracker data"
+          commit_message: "Update Serenity tracker when new posts appear"
           file_pattern: data.json

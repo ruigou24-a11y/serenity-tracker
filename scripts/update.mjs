@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import crypto from "node:crypto";
 
 const SOURCE_URL = "https://instalker.org/aleabitoreddit";
 const DATA_PATH = new URL("../data.json", import.meta.url);
@@ -113,6 +114,10 @@ function compactPost(post) {
     .slice(0, 360);
 }
 
+function hashPosts(posts) {
+  return crypto.createHash("sha256").update(posts.join("\n---\n")).digest("hex");
+}
+
 async function main() {
   let previous = {};
   try {
@@ -135,6 +140,12 @@ async function main() {
     throw new Error(`Only extracted ${posts.length} posts`);
   }
 
+  const sourceHash = hashPosts(posts);
+  if (previous.sourceHash === sourceHash) {
+    console.log("No new visible posts. Keeping data.json unchanged.");
+    return;
+  }
+
   const tickers = countTickers(posts);
   const themes = scoreThemes(posts);
   const summary = summarize(posts, tickers, themes);
@@ -142,6 +153,7 @@ async function main() {
     updatedAt: new Date().toISOString().slice(0, 10),
     sourceUrl: SOURCE_URL,
     postCount: posts.length,
+    sourceHash,
     ...summary,
     tickers,
     themes,
@@ -155,7 +167,7 @@ async function main() {
 main().catch(async (error) => {
   console.error(error);
   const previous = JSON.parse(await fs.readFile(DATA_PATH, "utf8"));
-  previous.updatedAt = `${new Date().toISOString().slice(0, 10)} (更新失败，保留上次数据)`;
+  previous.lastCheckError = `${new Date().toISOString()} ${error.message}`;
   await fs.writeFile(DATA_PATH, `${JSON.stringify(previous, null, 2)}\n`);
   process.exitCode = 1;
 });
